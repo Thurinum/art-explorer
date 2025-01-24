@@ -3,6 +3,7 @@ using System.IO;
 using System.Windows.Media.Imaging;
 using MimeMapping;
 using TaggedImageViewer.ImageProcessingDomain;
+using TaggedImageViewer.Utils;
 
 namespace TaggedImageViewer.FileSystemDomain;
 
@@ -10,13 +11,8 @@ public class DrawingsDirectoryService(IImageService imageService) : IDirectorySe
 {
     public List<DirectoryItem> GetRelevantDirectories(string rootPath)
     {
-        return GetImageDirectories(rootPath);
-    }
-
-    private List<DirectoryItem> GetImageDirectories(string rootPath)
-    {
         var directories = new List<DirectoryItem>();
-
+        
         foreach (string directory in Directory.GetDirectories(rootPath, "*", SearchOption.AllDirectories))
         {
             // note: we make the assumption that folders containing XCF files won't contain folders that also contain XCF files
@@ -31,15 +27,21 @@ public class DrawingsDirectoryService(IImageService imageService) : IDirectorySe
                 .Where(IsImageFile)
                 .ToList();
             
-            if (!imageFiles.Any())
-                continue;
+            // if (!imageFiles.Any())
+            //     continue;
             
             var thumbnail = imageService.LoadImage(imageFiles.FirstOrDefault(), 100, 0);
+            if (thumbnail.IsError())
+            {
+                Debug.WriteLine($"Failed to load thumbnail for {directory} because {thumbnail.Error()}");
+                thumbnail = imageService.GetDefaultImage();
+                continue;
+            }
             directories.Add(new DirectoryItem
             {
                 DisplayName = Path.GetFileName(directory),
                 FullPath = directory,
-                Thumbnail = thumbnail,
+                Thumbnail = thumbnail.Result(),
                 GimpFiles = gimpFiles,
                 ImageFiles = imageFiles
             });

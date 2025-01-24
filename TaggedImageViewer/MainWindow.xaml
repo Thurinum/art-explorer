@@ -3,25 +3,37 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:TaggedImageViewer"
+        xmlns:viewModels="clr-namespace:TaggedImageViewer.ViewModels"
         mc:Ignorable="d"
-        Title="Drawings Browser" Width="800" Height="600">
+        Title="Drawings Browser" Width="1280" Height="720">
+    
+    <Window.DataContext>
+        <viewModels:MainWindowViewModel />
+    </Window.DataContext>
+    
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        
         <Grid.ColumnDefinitions>
              <ColumnDefinition Width="*"/> 
+             <ColumnDefinition Width="5"/> 
+             <ColumnDefinition Width="*"/>
              <ColumnDefinition Width="5"/> 
              <ColumnDefinition Width="2*"/>
         </Grid.ColumnDefinitions>
         
-        <ListView Name="DirectoryListBox" SelectionChanged="DirectoryListBox_OnSelectionChanged" HorizontalAlignment="Stretch">
+        <ListView Name="DirectoryListBox" ItemsSource="{Binding Collections}" SelectionChanged="DirectoryListBox_OnSelectionChanged" HorizontalAlignment="Stretch">
             <ListView.ItemsPanel> 
                 <ItemsPanelTemplate>
                      <UniformGrid Columns="3" HorizontalAlignment="Left" />
                 </ItemsPanelTemplate>
             </ListView.ItemsPanel>
             <ListView.ItemTemplate>
-                <DataTemplate DataType="{x:Type local:DirectoryItem}">
-                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Width="125">
+                <DataTemplate>
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Width="100">
                         <Image Source="{Binding Thumbnail}" Width="100" Height="100" HorizontalAlignment="Center" />
                         <TextBlock Text="{Binding DisplayName}" HorizontalAlignment="Center" />
                     </StackPanel>
@@ -29,21 +41,26 @@
             </ListView.ItemTemplate>
         </ListView>
         
-        <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Gray" />
+        <GridSplitter Grid.Row="0" Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Gray" />
         
-        <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="0" Grid.Column="2" VerticalScrollBarVisibility="Auto">
             <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch" VerticalAlignment="Top">
                 <TextBlock Text="XCF Files"></TextBlock>
-                <ListView Name="XcfFilesListBox" ScrollViewer.CanContentScroll="False">
+                <ListView ItemsSource="{Binding XcfDrawings}" 
+                          ScrollViewer.VerticalScrollBarVisibility="Disabled" 
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          SelectionChanged="FilesListBox_OnSelectionChanged"
+                          MouseDoubleClick="Control_OnMouseDoubleClick"
+                          PreviewMouseWheel="HandlePreviewMouseWheel">
                     <ListView.ItemsPanel> 
                         <ItemsPanelTemplate>
                             <UniformGrid Columns="3" HorizontalAlignment="Left" />
                         </ItemsPanelTemplate>
                     </ListView.ItemsPanel>
                     <ListView.ItemTemplate>
-                        <DataTemplate DataType="{x:Type local:DirectoryItem}">
-                            <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Width="125">
-                                <Image Source="{Binding Thumbnail}" Width="100" Height="100" HorizontalAlignment="Center" />
+                        <DataTemplate>
+                            <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Width="75">
+                                <Image Source="{Binding Thumbnail}" Width="75" Height="100" HorizontalAlignment="Center" />
                                 <TextBlock Text="{Binding DisplayName}" HorizontalAlignment="Center" />
                             </StackPanel>
                         </DataTemplate>
@@ -51,14 +68,18 @@
                 </ListView>
             
                 <TextBlock Text="Image Files"></TextBlock>
-                <ListView Name="ImgListBox" ScrollViewer.CanContentScroll="False">
+                <ListView ItemsSource="{Binding ImgDrawings}" 
+                          ScrollViewer.VerticalScrollBarVisibility="Disabled" 
+                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                          SelectionChanged="FilesListBox_OnSelectionChanged"
+                          PreviewMouseWheel="HandlePreviewMouseWheel">
                     <ListView.ItemsPanel> 
                         <ItemsPanelTemplate>
                             <UniformGrid Columns="3" HorizontalAlignment="Left" />
                         </ItemsPanelTemplate>
                     </ListView.ItemsPanel>
                     <ListView.ItemTemplate>
-                        <DataTemplate DataType="{x:Type local:DirectoryItem}">
+                        <DataTemplate>
                             <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Width="125">
                                 <Image Source="{Binding Thumbnail}" Width="100" Height="100" HorizontalAlignment="Center" />
                                 <TextBlock Text="{Binding DisplayName}" HorizontalAlignment="Center" />
@@ -68,5 +89,14 @@
                 </ListView>
             </StackPanel>
         </ScrollViewer>
+        
+        <GridSplitter Grid.Row="0" Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Gray" />
+
+        <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Vertical" HorizontalAlignment="Center">
+            <Image Source="{Binding SelectedDrawing.Thumbnail}" HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding SelectedDrawing.DisplayName}" HorizontalAlignment="Center" />
+        </StackPanel>
+        
+        <ProgressBar Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Minimum="0" Value="{Binding Progress}" Maximum="{Binding ProgressMax}" Height="25" />
     </Grid>
 </Window>
