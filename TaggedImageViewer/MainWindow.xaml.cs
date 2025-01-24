@@ -1,8 +1,10 @@
-﻿using System.Diagnostics;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
+using Microsoft.Win32;
 using TaggedImageViewer.FileSystemDomain;
 using TaggedImageViewer.ImageProcessingDomain;
 using TaggedImageViewer.Utils;
@@ -24,8 +26,20 @@ public partial class MainWindow
     {
         _directoryService = directoryService;
         _imageService = imageService;
-        
         InitializeComponent();
+
+        const string registryKey = @"Software\ThurinumDrawingViewer";
+        
+        var key = Registry.CurrentUser.OpenSubKey(registryKey);
+        if (key == null)
+        {
+            key = Registry.CurrentUser.CreateSubKey(registryKey);
+            var username = (string)key.GetValue("RootDirectory", "DefaultUsername");
+            key.Close();
+        }
+
+        IEnumerable<DirectoryItem> directories = _directoryService.GetRelevantDirectories("F:\\Graphics\\Drawings");
+        DirectoryListBox.ItemsSource = directories;
         DataContext = _viewModel;
 
         Refresh();
