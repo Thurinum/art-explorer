@@ -5,30 +5,47 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:viewModels="clr-namespace:TaggedImageViewer.ViewModels"
         mc:Ignorable="d"
-        Title="Drawings Browser" Width="1280" Height="720">
+        Title="Drawings Browser" Width="1920" Height="1080">
     
     <Window.DataContext>
         <viewModels:MainWindowViewModel />
     </Window.DataContext>
     
-    <Grid>
+    <Window.Resources>
+        <CollectionViewSource x:Key="GroupedDrawings" Source="{Binding Drawings}">
+            <CollectionViewSource.GroupDescriptions>
+                <PropertyGroupDescription PropertyName="Type"/>
+            </CollectionViewSource.GroupDescriptions>
+        </CollectionViewSource>
+    </Window.Resources>
+    
+    <Grid Name="MainLayout">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         
         <Grid.ColumnDefinitions>
-             <ColumnDefinition Width="*"/> 
-             <ColumnDefinition Width="5"/> 
-             <ColumnDefinition Width="*"/>
-             <ColumnDefinition Width="5"/> 
-             <ColumnDefinition Width="2*"/>
+            <ColumnDefinition Width="Auto" /> 
+            <ColumnDefinition Width="5"/> 
+            <ColumnDefinition Width="Auto"/> 
+            <ColumnDefinition Width="5"/> 
+            <ColumnDefinition Width="2*"/>
         </Grid.ColumnDefinitions>
         
-        <ListView Name="DirectoryListBox" ItemsSource="{Binding Collections}" SelectionChanged="DirectoryListBox_OnSelectionChanged" HorizontalAlignment="Stretch">
+        <Menu Grid.Row="0" Grid.ColumnSpan="5">
+            <MenuItem Header="Developer">
+                <MenuItem Header="Delete thumbnails cache" Click="DeleteThumbnailsCache" />
+            </MenuItem>
+        </Menu>
+        
+        <ListView Grid.Row="1" Grid.Column="0" Name="DirectoryListBox" HorizontalAlignment="Stretch"
+                  ItemsSource="{Binding Collections}" 
+                  SelectionChanged="OnSelectDirectory" >
             <ListView.ItemsPanel> 
                 <ItemsPanelTemplate>
-                     <UniformGrid Columns="3" HorizontalAlignment="Left" />
+                     <UniformGrid Columns="3" HorizontalAlignment="Stretch" />
                 </ItemsPanelTemplate>
             </ListView.ItemsPanel>
             <ListView.ItemTemplate>
@@ -41,62 +58,76 @@
             </ListView.ItemTemplate>
         </ListView>
         
-        <GridSplitter Grid.Row="0" Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Gray" />
+        <GridSplitter Grid.Row="1" Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Gray" />
         
-        <ScrollViewer Grid.Row="0" Grid.Column="2" VerticalScrollBarVisibility="Auto">
-            <StackPanel Orientation="Vertical" HorizontalAlignment="Stretch" VerticalAlignment="Top">
-                <TextBlock Text="XCF Files"></TextBlock>
-                <ListView ItemsSource="{Binding XcfDrawings}" 
-                          ScrollViewer.VerticalScrollBarVisibility="Disabled" 
-                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                          SelectionChanged="FilesListBox_OnSelectionChanged"
-                          MouseDoubleClick="Control_OnMouseDoubleClick"
-                          PreviewMouseWheel="HandlePreviewMouseWheel">
-                    <ListView.ItemsPanel> 
-                        <ItemsPanelTemplate>
-                            <UniformGrid Columns="3" HorizontalAlignment="Left" />
-                        </ItemsPanelTemplate>
-                    </ListView.ItemsPanel>
-                    <ListView.ItemTemplate>
+        <ListView Grid.Row="1" Grid.Column="2" ItemsSource="{Binding Source={StaticResource GroupedDrawings}}" 
+                  SelectionChanged="OnSelectFile"
+                  MouseDoubleClick="OnOpenWithAssociatedApp">
+            <ListView.GroupStyle>
+                <GroupStyle>
+                    <GroupStyle.HeaderTemplate>
                         <DataTemplate>
-                            <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Width="75">
-                                <Image Source="{Binding Thumbnail}" Width="75" Height="100" HorizontalAlignment="Center" />
-                                <TextBlock Text="{Binding DisplayName}" HorizontalAlignment="Center" />
-                            </StackPanel>
+                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="16" Margin="5"/>
                         </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            
-                <TextBlock Text="Image Files"></TextBlock>
-                <ListView ItemsSource="{Binding ImgDrawings}" 
-                          ScrollViewer.VerticalScrollBarVisibility="Disabled" 
-                          ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                          SelectionChanged="FilesListBox_OnSelectionChanged"
-                          PreviewMouseWheel="HandlePreviewMouseWheel">
-                    <ListView.ItemsPanel> 
-                        <ItemsPanelTemplate>
-                            <UniformGrid Columns="3" HorizontalAlignment="Left" />
-                        </ItemsPanelTemplate>
-                    </ListView.ItemsPanel>
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Width="125">
-                                <Image Source="{Binding Thumbnail}" Width="100" Height="100" HorizontalAlignment="Center" />
-                                <TextBlock Text="{Binding DisplayName}" HorizontalAlignment="Center" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            </StackPanel>
-        </ScrollViewer>
+                    </GroupStyle.HeaderTemplate>
+                </GroupStyle>
+            </ListView.GroupStyle>
+            <ListView.ItemsPanel> 
+                <ItemsPanelTemplate>
+                    <UniformGrid Columns="5" HorizontalAlignment="Stretch" />
+                </ItemsPanelTemplate>
+            </ListView.ItemsPanel>
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Orientation="Vertical" HorizontalAlignment="Center" Width="75">
+                        <Image Source="{Binding Thumbnail}" Width="75" Height="100" HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding DisplayName}" HorizontalAlignment="Center" 
+                                   TextWrapping="Wrap" TextAlignment="Center" />
+                    </StackPanel>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="KeyboardNavigation.TabNavigation" Value="Once"/>
+                    <Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Cycle"/>
+                </Style>
+            </ListView.ItemContainerStyle>
+        </ListView>
         
-        <GridSplitter Grid.Row="0" Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Gray" />
+        <GridSplitter Grid.Row="1" Grid.Column="3" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch" Background="Gray" />
 
-        <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Vertical" HorizontalAlignment="Center">
-            <Image Source="{Binding SelectedDrawing.Thumbnail}" HorizontalAlignment="Center" />
-            <TextBlock Text="{Binding SelectedDrawing.DisplayName}" HorizontalAlignment="Center" />
-        </StackPanel>
+        <Grid Grid.Row="1" Grid.Column="4" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                MouseWheel="OnImageZoom"
+                MouseDown="OnImageDragStart"
+                MouseUp="OnImageDragEnd"
+                MouseMove="OnImageDrag"
+                ClipToBounds="True"
+                Background="Transparent">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            
+            <Image Grid.Row="0" Name="ImageViewer"
+                   Source="{Binding SelectedDrawing.Thumbnail}" />
+            <Border Grid.Row="1" Margin="0,10,0,0" Padding="16,8,16,8" 
+                    Background="#ddcccccc" CornerRadius="8,8,0,0" HorizontalAlignment="Center"
+                    MouseLeftButtonUp="OnShowDrawingDetails">
+                <!-- absolute cancer -->
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Visibility" Value="Visible" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding SelectedDrawing}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock FontSize="16" Text="{Binding SelectedDrawing.DisplayName}" />
+            </Border>
+        </Grid>
         
-        <ProgressBar Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" Minimum="0" Value="{Binding Progress}" Maximum="{Binding ProgressMax}" Height="25" />
+        <ProgressBar Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="5" Minimum="0" Value="{Binding Progress}" Maximum="{Binding ProgressMax}" Height="10" />
     </Grid>
 </Window>

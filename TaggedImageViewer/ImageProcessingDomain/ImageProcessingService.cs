@@ -61,10 +61,12 @@ public class ImageProcessingService() : IImageService
                 Height = height
             };
             using MagickImageCollection layers = new MagickImageCollection(path, settings);
+            layers[0].BackgroundColor = MagickColors.White;
             using IMagickImage<byte> image = layers.Merge();
             using MemoryStream stream = new MemoryStream();
+            image.Resize(width, height);
             image.Write(stream, MagickFormat.Jpeg);
-            
+
             stream.Position = 0;
             
             var bitmap = new BitmapImage();

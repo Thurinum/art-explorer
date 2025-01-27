@@ -1,16 +1,18 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
-using Microsoft.Win32;
+using MessagePack;
 using TaggedImageViewer.FileSystemDomain;
 using TaggedImageViewer.ImageProcessingDomain;
 using TaggedImageViewer.Utils;
 using TaggedImageViewer.ViewModels;
 using Path = System.IO.Path;
+using Vector = System.Windows.Vector;
 
 namespace TaggedImageViewer;
 
@@ -21,125 +23,161 @@ public partial class MainWindow
 {
     private readonly IDirectoryService _directoryService;
     private readonly IImageService _imageService;
-    private MainWindowViewModel _viewModel = new();
+    private readonly MainWindowViewModel _viewModel = new();
+    private bool _isDraggingImage;
+    private Point _previousMousePosition;
+    private CancellationTokenSource? _asyncImageLoadCancellation;
+    private Dictionary<string, byte[]> _cachedThumbnails = new();
     
     public MainWindow(IDirectoryService directoryService, IImageService imageService)
     {
         _directoryService = directoryService;
         _imageService = imageService;
         InitializeComponent();
-
-        const string registryKey = @"Software\ThurinumDrawingViewer";
+        DeserializeThumbnailsCache();
         
-        var key = Registry.CurrentUser.OpenSubKey(registryKey);
-        if (key == null)
-        {
-            key = Registry.CurrentUser.CreateSubKey(registryKey);
-            var username = (string)key.GetValue("RootDirectory", "DefaultUsername");
-            key.Close();
-        }
-
-        IEnumerable<DirectoryItem> directories = _directoryService.GetRelevantDirectories("F:\\Graphics\\Drawings");
-        DirectoryListBox.ItemsSource = directories;
         DataContext = _viewModel;
-
         Refresh();
+    }
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        _asyncImageLoadCancellation?.Cancel();
+        
+        SerializeThumbnailsCache();
+        base.OnClosing(e);
+    }
+
+    private void SerializeThumbnailsCache()
+    {
+        try
+        {
+            byte[] data = MessagePackSerializer.Serialize(_cachedThumbnails);
+            File.WriteAllBytes("thumbnails.cache", data);
+        } 
+        catch (Exception e)
+        {
+            MessageBox.Show($"Failed to save thumbnail cache: {e.Message}");
+        }
+    }
+    
+    private void DeserializeThumbnailsCache()
+    {
+        try
+        {
+            byte[] data = File.ReadAllBytes("thumbnails.cache");
+            _cachedThumbnails = MessagePackSerializer.Deserialize<Dictionary<string, byte[]>>(data);
+            
+            // remove invalid entries
+            foreach (var key in _cachedThumbnails.Keys.ToArray())
+            {
+                if (!File.Exists(key))
+                    _cachedThumbnails.Remove(key);
+            }
+        } 
+        catch (Exception e)
+        {
+            MessageBox.Show($"Failed to load thumbnail cache: {e.Message}");
+        }
     }
 
     private void Refresh()
     {
+        // todo: get from config and configure somewhere in app
         _viewModel.Collections = _directoryService.GetRelevantDirectories("F:\\Graphics\\Drawings");
     }
 
-    private void DirectoryListBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void OnSelectDirectory(object sender, SelectionChangedEventArgs e)
     {
         if (DirectoryListBox.SelectedItem is not DirectoryItem selectedDir)
             return;
 
         _viewModel.Progress = 0;
         _viewModel.ProgressMax = selectedDir.GimpFiles.Count() + selectedDir.ImageFiles.Count();
-        _viewModel.XcfDrawings.Clear();
+        _viewModel.Drawings.Clear();
         
-        // todo load once only
-        BitmapImage tempImage = new BitmapImage(new Uri("pack://application:,,,/Assets/load.gif"));
+        // todo: load once and cache
+        BitmapImage defaultImage = (Resources["InvalidThumbnail"] as BitmapImage)!;
         
-        foreach (string filePath in selectedDir.GimpFiles)
+        // todo: merge file query into one in the service
+        foreach (string imagePath in selectedDir.ImageFiles)
         {
-            string name = Path.GetFileName(filePath);
-            _viewModel.XcfDrawings.Add(new DirectoryItem
-            {
-                DisplayName = name,
-                FullPath = filePath,
-                Thumbnail = tempImage
-            });
+            _viewModel.Drawings.Add(new FileItem(
+                DisplayName: Path.GetFileName(imagePath), 
+                FullPath: imagePath,
+                Type: FileItemType.ImageFile, 
+                Thumbnail: defaultImage)
+            );
         }
+        foreach (string xcfPath in selectedDir.GimpFiles)
+        {
+            _viewModel.Drawings.Add(new FileItem(
+                DisplayName: Path.GetFileNameWithoutExtension(xcfPath), 
+                FullPath: xcfPath,
+                Type: FileItemType.XcfFile, 
+                Thumbnail: defaultImage)
+            );
+        }
+        _asyncImageLoadCancellation?.Cancel();
+        _asyncImageLoadCancellation = new CancellationTokenSource();
+        var cancellationToken = _asyncImageLoadCancellation.Token;
         
-        // todo avoid duplicata
         Task.Run(() =>
         {
-            for (int i = 0; i < selectedDir.GimpFiles.Count(); i++)
+            Stopwatch sw = new();
+            sw.Start();
+            
+            IEnumerable<string> allFiles = selectedDir.ImageFiles.Concat(selectedDir.GimpFiles).ToArray();
+            
+            for (int i = 0; i < allFiles.Count(); i++)
             {
-                string filePath = selectedDir.GimpFiles.ElementAt(i);
-                // todo better error handling (hoist up + either monad)
-                var bitmap = _imageService.LoadImage(filePath, 100, 0);
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+                
+                var filePath = allFiles.ElementAt(i);
+
+                BitmapImage thumbnail = defaultImage;
+                if (_cachedThumbnails.TryGetValue(filePath, out var cachedThumbnail))
+                {
+                    thumbnail = BitmapImageExtensions.FromByteArray(cachedThumbnail);
+                }
+                else
+                {
+                    var bitmap = _imageService.LoadImage(filePath, 1024, 0);
+                    if (bitmap.IsOk())
+                    {
+                        thumbnail = bitmap.Result();
+                        _cachedThumbnails[filePath] = thumbnail.ToByteArray();
+                    }
+                }
+
+                var index = i;
                 Dispatcher.InvokeAsync(() =>
                 {
-                    _viewModel.XcfDrawings[i] = new DirectoryItem
-                    {
-                        DisplayName = Path.GetFileName(filePath),
-                        FullPath = filePath,
-                        Thumbnail = bitmap.IsOk() 
-                            ? bitmap.Result() 
-                            // todo cache this
-                            : new BitmapImage(new Uri("pack://application:,,,/Assets/invalid_thumbnail.png"))
-                    };
-                    _viewModel.Progress++;
-                });
-            }
-        });
+                    if (cancellationToken.IsCancellationRequested)
+                        return;
 
-        _viewModel.ImgDrawings.Clear();
-        Task.Run(() =>
-        {
-            foreach (string filePath in selectedDir.ImageFiles)
-            {
-                string name = Path.GetFileName(filePath);
-                var bitmap = _imageService.LoadImage(filePath, 100, 0);
-                
-                Dispatcher.InvokeAsync(() => 
-                {
-                    _viewModel.ImgDrawings.Add(new DirectoryItem
+                    FileItem drawing = _viewModel.Drawings[index];
+                    _viewModel.Drawings[index] = drawing with
                     {
-                        DisplayName = name,
-                        FullPath = filePath,
-                        Thumbnail = bitmap.IsOk() 
-                            ? bitmap.Result() 
-                            // todo cache this
-                            : new BitmapImage(new Uri("pack://application:,,,/Assets/invalid_thumbnail.png"))
-                    });
+                        Thumbnail = thumbnail
+                    };
+                    
                     _viewModel.Progress++;
                 });
             }
-        });
+            
+            Console.WriteLine($"Loaded thumbnails in {sw.ElapsedMilliseconds}ms");
+            sw.Stop();
+        }, cancellationToken);
     }
     
-    private void FilesListBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (sender is not ListBox listBox)
-            return;
-        
-        if (listBox.SelectedItem is not DirectoryItem selectedFile)
-            return;
-        
-        _viewModel.SelectedDrawing = selectedFile;
-    }
-
-    private void Control_OnMouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private void OnOpenWithAssociatedApp(object sender, MouseButtonEventArgs e)
     {
         if (sender is not ListBox listBox)
             return;
 
-        if (listBox.SelectedItem is not DirectoryItem selectedFile)
+        if (listBox.SelectedItem is not FileItem selectedFile)
             return;
         
         Process.Start(new ProcessStartInfo
@@ -149,21 +187,92 @@ public partial class MainWindow
             Verb = "open"
         });
     }
-
-    // https://stackoverflow.com/questions/1585462/bubbling-scroll-events-from-a-listview-to-its-parent
-    private void HandlePreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    
+    private void OnImageZoom(object sender, MouseWheelEventArgs e)
     {
-        if (e.Handled) 
+        // zoom in/out at mouse position
+        if (sender is not Panel panel)
             return;
         
-        e.Handled = true;
-        var eventArg = new MouseWheelEventArgs(e.MouseDevice, e.Timestamp, e.Delta)
-        {
-            RoutedEvent = MouseWheelEvent,
-            Source = sender
-        };
+        Image? image = panel.Children.OfType<Image>().FirstOrDefault();
+        if (image == null)
+            return;
+
+        if (e.Delta == 0)
+            return;
+
+        Matrix transform = image.RenderTransform.Value;
+        double scale = e.Delta > 0 
+            ? 1.1 
+            : 1 / 1.1;
         
-        var parent = ((Control)sender).Parent as UIElement;
-        parent?.RaiseEvent(eventArg);
+        var pos = e.GetPosition(panel);
+        transform.ScaleAt(scale, scale, pos.X, pos.Y);
+        image.RenderTransform = new MatrixTransform(transform);
+    }
+
+    private void OnImageDragStart(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not Panel panel)
+            return;
+        
+        _isDraggingImage = true;
+        _previousMousePosition = e.GetPosition(panel);
+    }
+
+    private void OnImageDragEnd(object sender, MouseButtonEventArgs e)
+    {
+        _isDraggingImage = false;
+    }
+
+    private void OnImageDrag(object sender, MouseEventArgs e)
+    {
+        if (!_isDraggingImage)
+            return;
+        
+        if (sender is not Panel panel)
+            return;
+        
+        Image? image = panel.Children.OfType<Image>().FirstOrDefault();
+        if (image == null)
+            return;
+        
+        Matrix transform = image.RenderTransform.Value;
+        Point mousePos = e.GetPosition(panel);
+        Vector displacement = mousePos - _previousMousePosition;
+        transform.Translate(displacement.X, displacement.Y);
+        image.RenderTransform = new MatrixTransform(transform);
+        _previousMousePosition = mousePos;
+    }
+
+    private void OnShowDrawingDetails(object sender, MouseButtonEventArgs e)
+    {
+        MainLayout.ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star);
+        MainLayout.ColumnDefinitions[1].Width = new GridLength(0, GridUnitType.Pixel);
+        MainLayout.ColumnDefinitions[3].Width = new GridLength(0, GridUnitType.Pixel);
+    }
+
+    private void OnSelectFile(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ListBox listBox)
+            return;
+        
+        if (listBox.SelectedItem is not FileItem selectedFile)
+            return;
+        
+        _viewModel.SelectedDrawing = selectedFile;
+        ImageViewer.RenderTransform = new ScaleTransform(1, 1);
+    }
+
+    private void DeleteThumbnailsCache(object sender, RoutedEventArgs e)
+    {
+        MessageBoxResult result = MessageBox.Show("Are you sure?",
+            "Delete Thumbnails Cache?", MessageBoxButton.YesNo);
+        
+        if (result != MessageBoxResult.Yes) 
+            return;
+        
+        _cachedThumbnails.Clear();
+        SerializeThumbnailsCache();
     }
 }

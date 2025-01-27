@@ -37,14 +37,12 @@ public class DrawingsDirectoryService(IImageService imageService) : IDirectorySe
                 thumbnail = imageService.GetDefaultImage();
                 continue;
             }
-            directories.Add(new DirectoryItem
-            {
-                DisplayName = Path.GetFileName(directory),
-                FullPath = directory,
-                Thumbnail = thumbnail.Result(),
-                GimpFiles = gimpFiles,
-                ImageFiles = imageFiles
-            });
+            directories.Add(new DirectoryItem(
+                DisplayName: Path.GetFileName(directory), 
+                FullPath: directory,
+                Thumbnail: thumbnail.Result(), 
+                GimpFiles: gimpFiles, 
+                ImageFiles: imageFiles));
         }
         
         return directories;
