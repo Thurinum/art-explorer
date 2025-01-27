@@ -22,5 +22,6 @@ public record FileItem
     string DisplayName,
     string FullPath,
     FileItemType Type,
-    BitmapImage Thumbnail
+    BitmapImage Thumbnail,
+    bool IsLoadingThumbnail = false
 );

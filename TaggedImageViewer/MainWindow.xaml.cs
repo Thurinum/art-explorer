@@ -96,9 +96,6 @@ public partial class MainWindow
         _viewModel.ProgressMax = selectedDir.GimpFiles.Count() + selectedDir.ImageFiles.Count();
         _viewModel.Drawings.Clear();
         
-        // todo: load once and cache
-        BitmapImage defaultImage = (Resources["InvalidThumbnail"] as BitmapImage)!;
-        
         // todo: merge file query into one in the service
         foreach (string imagePath in selectedDir.ImageFiles)
         {
@@ -106,8 +103,9 @@ public partial class MainWindow
                 DisplayName: Path.GetFileName(imagePath), 
                 FullPath: imagePath,
                 Type: FileItemType.ImageFile, 
-                Thumbnail: defaultImage)
-            );
+                Thumbnail: null!,
+                IsLoadingThumbnail: true
+            ));
         }
         foreach (string xcfPath in selectedDir.GimpFiles)
         {
@@ -115,8 +113,9 @@ public partial class MainWindow
                 DisplayName: Path.GetFileNameWithoutExtension(xcfPath), 
                 FullPath: xcfPath,
                 Type: FileItemType.XcfFile, 
-                Thumbnail: defaultImage)
-            );
+                Thumbnail: null!,
+                IsLoadingThumbnail: true
+            ));
         }
         _asyncImageLoadCancellation?.Cancel();
         _asyncImageLoadCancellation = new CancellationTokenSource();
@@ -136,7 +135,7 @@ public partial class MainWindow
                 
                 var filePath = allFiles.ElementAt(i);
 
-                BitmapImage thumbnail = defaultImage;
+                BitmapImage thumbnail = _imageService.GetDefaultThumbnail();
                 if (_cachedThumbnails.TryGetValue(filePath, out var cachedThumbnail))
                 {
                     thumbnail = BitmapImageExtensions.FromByteArray(cachedThumbnail);
@@ -160,7 +159,8 @@ public partial class MainWindow
                     FileItem drawing = _viewModel.Drawings[index];
                     _viewModel.Drawings[index] = drawing with
                     {
-                        Thumbnail = thumbnail
+                        Thumbnail = thumbnail,
+                        IsLoadingThumbnail = false
                     };
                     
                     _viewModel.Progress++;
@@ -262,6 +262,17 @@ public partial class MainWindow
         
         _viewModel.SelectedDrawing = selectedFile;
         ImageViewer.RenderTransform = new ScaleTransform(1, 1);
+
+        if (listBox.SelectedItems.Count == 1)
+        {
+            _viewModel.SelectedDrawing2 = null;
+            return;
+        }
+
+        if (listBox.SelectedItems[1] is not FileItem selectedFile2) 
+            return;
+        
+        _viewModel.SelectedDrawing2 = selectedFile2;
     }
 
     private void DeleteThumbnailsCache(object sender, RoutedEventArgs e)
@@ -274,5 +285,15 @@ public partial class MainWindow
         
         _cachedThumbnails.Clear();
         SerializeThumbnailsCache();
+    }
+    
+    private void OnEnableCompare(object sender, MouseButtonEventArgs e)
+    {
+        _viewModel.IsSecondImageVisible = true;
+    }
+
+    private void OnDisableCompare(object sender, MouseButtonEventArgs e)
+    {
+        _viewModel.IsSecondImageVisible = false;
     }
 }

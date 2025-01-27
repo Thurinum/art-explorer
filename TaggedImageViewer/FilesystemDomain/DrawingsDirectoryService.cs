@@ -27,14 +27,11 @@ public class DrawingsDirectoryService(IImageService imageService) : IDirectorySe
                 .Where(IsImageFile)
                 .ToList();
             
-            // if (!imageFiles.Any())
-            //     continue;
-            
             var thumbnail = imageService.LoadImage(imageFiles.FirstOrDefault(), 100, 0);
             if (thumbnail.IsError())
             {
                 Debug.WriteLine($"Failed to load thumbnail for {directory} because {thumbnail.Error()}");
-                thumbnail = imageService.GetDefaultImage();
+                thumbnail = imageService.GetDefaultThumbnail();
                 continue;
             }
             directories.Add(new DirectoryItem(

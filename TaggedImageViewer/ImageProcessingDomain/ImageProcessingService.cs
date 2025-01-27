@@ -14,7 +14,7 @@ public class ImageProcessingService() : IImageService
     private const string DefaultImagePath = "pack://application:,,,/Assets/invalid_thumbnail.png";
     private static readonly BitmapImage DefaultImage = new(new Uri(DefaultImagePath));
 
-    public BitmapImage GetDefaultImage()
+    public BitmapImage GetDefaultThumbnail()
     {
         return DefaultImage;
     }

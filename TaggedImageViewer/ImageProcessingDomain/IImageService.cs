@@ -5,6 +5,6 @@ namespace TaggedImageViewer.ImageProcessingDomain;
 
 public interface IImageService
 {
-    BitmapImage GetDefaultImage();
+    BitmapImage GetDefaultThumbnail();
     OneOf<BitmapImage, FuckYou> LoadImage(string? path, int width, int height);
 }
