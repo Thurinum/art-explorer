@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaggedImageViewer", "TaggedImageViewer\TaggedImageViewer.csproj", "{69AF21C3-F309-4AE8-90E8-773C1E6B5DE9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TaggedImageViewer_Tests", "TaggedImageViewer_Tests\TaggedImageViewer_Tests.csproj", "{986BE719-242A-4B29-B77F-8C6006F55106}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{69AF21C3-F309-4AE8-90E8-773C1E6B5DE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{69AF21C3-F309-4AE8-90E8-773C1E6B5DE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{69AF21C3-F309-4AE8-90E8-773C1E6B5DE9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{986BE719-242A-4B29-B77F-8C6006F55106}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{986BE719-242A-4B29-B77F-8C6006F55106}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{986BE719-242A-4B29-B77F-8C6006F55106}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{986BE719-242A-4B29-B77F-8C6006F55106}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

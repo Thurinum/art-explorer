@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:viewModels="clr-namespace:TaggedImageViewer.ViewModels"
+        xmlns:components="clr-namespace:TaggedImageViewer.Components"
         mc:Ignorable="d"
         Title="Drawings Browser" Width="1920" Height="1080">
     
@@ -46,6 +47,8 @@
                 </EventTrigger>
             </Style.Triggers>
         </Style>
+        
+        <components:DirectoryPicker x:Key="DirectoryPicker" />
     </Window.Resources>
     
     <Grid Name="MainLayout">
@@ -67,6 +70,7 @@
             <MenuItem Header="Developer">
                 <MenuItem Header="Delete thumbnails cache" Click="DeleteThumbnailsCache" />
             </MenuItem>
+            <components:DirectoryPicker PickedDirectory="{Binding RootDirectory}" PickedDirectoryChanged="DirectoryPicker_OnPickedDirectoryChanged"></components:DirectoryPicker>
         </Menu>
         
         <ListView Grid.Row="1" Grid.Column="0" Name="DirectoryListBox" HorizontalAlignment="Stretch"

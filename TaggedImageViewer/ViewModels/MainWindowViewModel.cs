@@ -12,6 +12,7 @@ public class MainWindowViewModel
     public FileItem? SelectedDrawing { get; set;  } = null;
     public FileItem? SelectedDrawing2 { get; set;  } = null;
     public bool IsSecondImageVisible { get; set; } = false;
+    public string RootDirectory { get; set; } = "";
     
     // used by binding
     public Visibility ShowSecondImage => SelectedDrawing2 != null && IsSecondImageVisible

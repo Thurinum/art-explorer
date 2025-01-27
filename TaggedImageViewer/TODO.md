@@ -2,10 +2,25 @@
 - [ ] Watch filesystem for changes and update the list of images
 - [ ] Update the image cache automatically when an image is renamed or moved
 - [ ] Update the image cache automatically when image data is edited on disk
-- [ ] Rename and delete images from the program, with undo
+- [ ] Support PSD and Krita files as well
+
+### Collection features
+- [ ] Make keyboard navigation flow across lines instead of like a grid
+- [ ] Context menu with shortcuts:
+  - Open with associated app (Double click)
+  - Open in explorer (Ctrl+E)
+  - Copy full path (Ctrl+Shift+C)
+  - Copy image thumbnail to clipboard (Ctrl+C)
+- [ ] Rename collections and drawings
+- [ ] Customize collection thumbnail
+- [ ] Skip images with missing thumbnails (optionally) 
 
 ### Viewing features
-- [ ] Fix zoom in/out to center on the mouse cursor
+- [x] Fix zoom in/out to center on the mouse cursor
+- [ ] Auto fit zoom to window
+- [ ] Reset zoom to 100% (Middle click)
+- [ ] Scroll mouse wheel to compare more than 2 images
+- [ ] Support previewing gifs
 
 ### Metadata
 - [ ] Set optional per-image metadata tags

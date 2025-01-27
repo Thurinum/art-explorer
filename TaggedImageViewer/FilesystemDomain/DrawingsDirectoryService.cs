@@ -13,6 +13,9 @@ public class DrawingsDirectoryService(IImageService imageService) : IDirectorySe
     {
         var directories = new List<DirectoryItem>();
         
+        if (!Directory.Exists(rootPath))
+            return directories;
+        
         foreach (string directory in Directory.GetDirectories(rootPath, "*", SearchOption.AllDirectories))
         {
             // note: we make the assumption that folders containing XCF files won't contain folders that also contain XCF files

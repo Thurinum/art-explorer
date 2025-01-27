@@ -7,6 +7,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using MessagePack;
+using TaggedImageViewer.Components;
 using TaggedImageViewer.FileSystemDomain;
 using TaggedImageViewer.ImageProcessingDomain;
 using TaggedImageViewer.Utils;
@@ -23,18 +24,22 @@ public partial class MainWindow
 {
     private readonly IDirectoryService _directoryService;
     private readonly IImageService _imageService;
+    private readonly IConfigService _configService;
     private readonly MainWindowViewModel _viewModel = new();
     private bool _isDraggingImage;
     private Point _previousMousePosition;
     private CancellationTokenSource? _asyncImageLoadCancellation;
     private Dictionary<string, byte[]> _cachedThumbnails = new();
     
-    public MainWindow(IDirectoryService directoryService, IImageService imageService)
+    public MainWindow(IDirectoryService directoryService, IImageService imageService, IConfigService configService)
     {
         _directoryService = directoryService;
         _imageService = imageService;
+        _configService = configService;
         InitializeComponent();
         DeserializeThumbnailsCache();
+        
+        _viewModel.RootDirectory = _configService.GetConfig<string>("RootDirectory", "");
         
         DataContext = _viewModel;
         Refresh();
@@ -44,6 +49,7 @@ public partial class MainWindow
     {
         _asyncImageLoadCancellation?.Cancel();
         
+        _configService.SetConfig("RootDirectory", _viewModel.RootDirectory);
         SerializeThumbnailsCache();
         base.OnClosing(e);
     }
@@ -83,8 +89,9 @@ public partial class MainWindow
 
     private void Refresh()
     {
-        // todo: get from config and configure somewhere in app
-        _viewModel.Collections = _directoryService.GetRelevantDirectories("F:\\Graphics\\Drawings");
+        _viewModel.Collections = _directoryService.GetRelevantDirectories(_viewModel.RootDirectory);
+        // FileSystemWatcher watcher = new();
+        // watcher.Path = _viewModel.RootDirectory;
     }
 
     private void OnSelectDirectory(object sender, SelectionChangedEventArgs e)
@@ -194,21 +201,21 @@ public partial class MainWindow
         if (sender is not Panel panel)
             return;
         
-        Image? image = panel.Children.OfType<Image>().FirstOrDefault();
-        if (image == null)
+        Panel? viewer = panel.Children.OfType<Panel>().FirstOrDefault();
+        if (viewer == null)
             return;
 
         if (e.Delta == 0)
             return;
 
-        Matrix transform = image.RenderTransform.Value;
+        Matrix transform = viewer.RenderTransform.Value;
         double scale = e.Delta > 0 
             ? 1.1 
             : 1 / 1.1;
         
         var pos = e.GetPosition(panel);
         transform.ScaleAt(scale, scale, pos.X, pos.Y);
-        image.RenderTransform = new MatrixTransform(transform);
+        viewer.RenderTransform = new MatrixTransform(transform);
     }
 
     private void OnImageDragStart(object sender, MouseButtonEventArgs e)
@@ -233,15 +240,15 @@ public partial class MainWindow
         if (sender is not Panel panel)
             return;
         
-        Image? image = panel.Children.OfType<Image>().FirstOrDefault();
-        if (image == null)
+        Panel? viewer = panel.Children.OfType<Panel>().FirstOrDefault();
+        if (viewer == null)
             return;
         
-        Matrix transform = image.RenderTransform.Value;
+        Matrix transform = viewer.RenderTransform.Value;
         Point mousePos = e.GetPosition(panel);
         Vector displacement = mousePos - _previousMousePosition;
         transform.Translate(displacement.X, displacement.Y);
-        image.RenderTransform = new MatrixTransform(transform);
+        viewer.RenderTransform = new MatrixTransform(transform);
         _previousMousePosition = mousePos;
     }
 
@@ -295,5 +302,11 @@ public partial class MainWindow
     private void OnDisableCompare(object sender, MouseButtonEventArgs e)
     {
         _viewModel.IsSecondImageVisible = false;
+    }
+
+    private void DirectoryPicker_OnPickedDirectoryChanged(object sender, PickedDirectoryChangedEventArgs e)
+    {
+        _viewModel.RootDirectory = e.PickedDirectory;
+        Refresh();
     }
 }
