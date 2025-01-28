@@ -10,40 +10,36 @@ public partial class DrawingPreview : UserControl
 {
     private bool _isDraggingImage;
     private Point _previousMousePosition;
-    private readonly DrawingPreviewViewModel _viewModel; // todo: use a dedicated view model
+    private DrawingPreviewViewModel _viewModel = null!; // lateinit
     
     public DrawingPreview()
     {
         InitializeComponent();
+    }
+    
+    private void OnComponentLoaded(object sender, RoutedEventArgs e)
+    {
         _viewModel = (DrawingPreviewViewModel)DataContext;
     }
     
     public void ResetZoom()
     {
-        ImageViewer.RenderTransform = new ScaleTransform(1, 1);
+        ImagesPanel.RenderTransform = new ScaleTransform(1, 1);
     }
     
     private void OnImageZoom(object sender, MouseWheelEventArgs e)
     {
-        // zoom in/out at mouse position
-        if (sender is not Panel panel)
-            return;
-        
-        Panel? viewer = panel.Children.OfType<Panel>().FirstOrDefault();
-        if (viewer == null)
-            return;
-
         if (e.Delta == 0)
             return;
 
-        Matrix transform = viewer.RenderTransform.Value;
+        Matrix transform = ImagesPanel.RenderTransform.Value;
         double scale = e.Delta > 0 
             ? 1.1 
             : 1 / 1.1;
         
-        var pos = e.GetPosition(panel);
+        var pos = e.GetPosition(RootPanel);
         transform.ScaleAt(scale, scale, pos.X, pos.Y);
-        viewer.RenderTransform = new MatrixTransform(transform);
+        ImagesPanel.RenderTransform = new MatrixTransform(transform);
     }
 
     private void OnImageDragStart(object sender, MouseButtonEventArgs e)
@@ -65,18 +61,11 @@ public partial class DrawingPreview : UserControl
         if (!_isDraggingImage)
             return;
         
-        if (sender is not Panel panel)
-            return;
-        
-        Panel? viewer = panel.Children.OfType<Panel>().FirstOrDefault();
-        if (viewer == null)
-            return;
-        
-        Matrix transform = viewer.RenderTransform.Value;
-        Point mousePos = e.GetPosition(panel);
+        Matrix transform = ImagesPanel.RenderTransform.Value;
+        Point mousePos = e.GetPosition(RootPanel);
         Vector displacement = mousePos - _previousMousePosition;
         transform.Translate(displacement.X, displacement.Y);
-        viewer.RenderTransform = new MatrixTransform(transform);
+        ImagesPanel.RenderTransform = new MatrixTransform(transform);
         _previousMousePosition = mousePos;
     }
     

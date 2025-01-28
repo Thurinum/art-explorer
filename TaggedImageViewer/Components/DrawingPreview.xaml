@@ -5,8 +5,9 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:viewModels="clr-namespace:TaggedImageViewer.ViewModels"
              mc:Ignorable="d"
+             Loaded="OnComponentLoaded"
              d:DesignHeight="300" d:DesignWidth="300" d:DataContext="{d:DesignInstance viewModels:DrawingPreviewViewModel}">
-    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+    <Grid Name="RootPanel" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
           MouseWheel="OnImageZoom"
           MouseDown="OnImageDragStart"
           MouseUp="OnImageDragEnd"
@@ -20,7 +21,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
             
-        <Grid Grid.Row="0" Name="ImageViewer">
+        <Grid Grid.Row="0" Name="ImagesPanel">
             <Image Source="{Binding SelectedDrawing.Thumbnail}" />
             <Image Visibility="{Binding ShowSecondImage}" 
                    Source="{Binding SelectedDrawing2.Thumbnail}" />
