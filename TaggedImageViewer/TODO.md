@@ -17,6 +17,7 @@
 
 ### Viewing features
 - [x] Fix zoom in/out to center on the mouse cursor
+- [ ] Flip images horizontally and vertically
 - [ ] Auto fit zoom to window
 - [ ] Reset zoom to 100% (Middle click)
 - [ ] Scroll mouse wheel to compare more than 2 images

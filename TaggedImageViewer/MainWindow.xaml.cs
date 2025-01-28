@@ -13,7 +13,6 @@ using TaggedImageViewer.ImageProcessingDomain;
 using TaggedImageViewer.Utils;
 using TaggedImageViewer.ViewModels;
 using Path = System.IO.Path;
-using Vector = System.Windows.Vector;
 
 namespace TaggedImageViewer;
 
@@ -26,8 +25,7 @@ public partial class MainWindow
     private readonly IImageService _imageService;
     private readonly IConfigService _configService;
     private readonly MainWindowViewModel _viewModel = new();
-    private bool _isDraggingImage;
-    private Point _previousMousePosition;
+
     private CancellationTokenSource? _asyncImageLoadCancellation;
     private Dictionary<string, byte[]> _cachedThumbnails = new();
     
@@ -194,70 +192,6 @@ public partial class MainWindow
             Verb = "open"
         });
     }
-    
-    private void OnImageZoom(object sender, MouseWheelEventArgs e)
-    {
-        // zoom in/out at mouse position
-        if (sender is not Panel panel)
-            return;
-        
-        Panel? viewer = panel.Children.OfType<Panel>().FirstOrDefault();
-        if (viewer == null)
-            return;
-
-        if (e.Delta == 0)
-            return;
-
-        Matrix transform = viewer.RenderTransform.Value;
-        double scale = e.Delta > 0 
-            ? 1.1 
-            : 1 / 1.1;
-        
-        var pos = e.GetPosition(panel);
-        transform.ScaleAt(scale, scale, pos.X, pos.Y);
-        viewer.RenderTransform = new MatrixTransform(transform);
-    }
-
-    private void OnImageDragStart(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is not Panel panel)
-            return;
-        
-        _isDraggingImage = true;
-        _previousMousePosition = e.GetPosition(panel);
-    }
-
-    private void OnImageDragEnd(object sender, MouseButtonEventArgs e)
-    {
-        _isDraggingImage = false;
-    }
-
-    private void OnImageDrag(object sender, MouseEventArgs e)
-    {
-        if (!_isDraggingImage)
-            return;
-        
-        if (sender is not Panel panel)
-            return;
-        
-        Panel? viewer = panel.Children.OfType<Panel>().FirstOrDefault();
-        if (viewer == null)
-            return;
-        
-        Matrix transform = viewer.RenderTransform.Value;
-        Point mousePos = e.GetPosition(panel);
-        Vector displacement = mousePos - _previousMousePosition;
-        transform.Translate(displacement.X, displacement.Y);
-        viewer.RenderTransform = new MatrixTransform(transform);
-        _previousMousePosition = mousePos;
-    }
-
-    private void OnShowDrawingDetails(object sender, MouseButtonEventArgs e)
-    {
-        MainLayout.ColumnDefinitions[0].Width = new GridLength(1, GridUnitType.Star);
-        MainLayout.ColumnDefinitions[1].Width = new GridLength(0, GridUnitType.Pixel);
-        MainLayout.ColumnDefinitions[3].Width = new GridLength(0, GridUnitType.Pixel);
-    }
 
     private void OnSelectFile(object sender, RoutedEventArgs e)
     {
@@ -267,19 +201,19 @@ public partial class MainWindow
         if (listBox.SelectedItem is not FileItem selectedFile)
             return;
         
-        _viewModel.SelectedDrawing = selectedFile;
-        ImageViewer.RenderTransform = new ScaleTransform(1, 1);
+        _viewModel.DrawingPreview.SelectedDrawing = selectedFile;
+        PreviewComponent.ResetZoom();
 
         if (listBox.SelectedItems.Count == 1)
         {
-            _viewModel.SelectedDrawing2 = null;
+            _viewModel.DrawingPreview.SelectedDrawing2 = null;
             return;
         }
 
         if (listBox.SelectedItems[1] is not FileItem selectedFile2) 
             return;
         
-        _viewModel.SelectedDrawing2 = selectedFile2;
+        _viewModel.DrawingPreview.SelectedDrawing2 = selectedFile2;
     }
 
     private void DeleteThumbnailsCache(object sender, RoutedEventArgs e)
@@ -294,17 +228,7 @@ public partial class MainWindow
         SerializeThumbnailsCache();
     }
     
-    private void OnEnableCompare(object sender, MouseButtonEventArgs e)
-    {
-        _viewModel.IsSecondImageVisible = true;
-    }
-
-    private void OnDisableCompare(object sender, MouseButtonEventArgs e)
-    {
-        _viewModel.IsSecondImageVisible = false;
-    }
-
-    private void DirectoryPicker_OnPickedDirectoryChanged(object sender, PickedDirectoryChangedEventArgs e)
+    private void OnPickRootDirectory(object sender, PickedDirectoryChangedEventArgs e)
     {
         _viewModel.RootDirectory = e.PickedDirectory;
         Refresh();
