@@ -78,7 +78,7 @@
                   SelectionChanged="OnSelectDirectory" >
             <ListView.ItemsPanel> 
                 <ItemsPanelTemplate>
-                     <UniformGrid Columns="3" HorizontalAlignment="Stretch" />
+                     <UniformGrid Columns="3" HorizontalAlignment="Stretch" VerticalAlignment="Top" />
                 </ItemsPanelTemplate>
             </ListView.ItemsPanel>
             <ListView.ItemTemplate>

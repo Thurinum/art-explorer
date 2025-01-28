@@ -25,10 +25,11 @@ public partial class MainWindow
     private readonly IImageService _imageService;
     private readonly IConfigService _configService;
     private readonly MainWindowViewModel _viewModel = new();
+    private readonly FileSystemWatcher _watcher = new();
 
-    private CancellationTokenSource? _asyncImageLoadCancellation;
+    private CancellationTokenSource? _thumbnailLoadCancel;
     private Dictionary<string, byte[]> _cachedThumbnails = new();
-    
+
     public MainWindow(IDirectoryService directoryService, IImageService imageService, IConfigService configService)
     {
         _directoryService = directoryService;
@@ -36,16 +37,55 @@ public partial class MainWindow
         _configService = configService;
         InitializeComponent();
         DeserializeThumbnailsCache();
-        
+
         _viewModel.RootDirectory = _configService.GetConfig<string>("RootDirectory", "");
+
+        _watcher.Path = _viewModel.RootDirectory;
+        _watcher.NotifyFilter = NotifyFilters.LastWrite 
+                              | NotifyFilters.FileName 
+                              | NotifyFilters.DirectoryName;
+        _watcher.Filter = "*.*";
+        //_watcher.Created += OnDrawingRenamed;
+        _watcher.Renamed += OnDrawingRenamed;
+        //_watcher.Changed += OnDrawingModified;
+        //_watcher.Deleted += OnDrawingRenamed;
+        _watcher.IncludeSubdirectories = true;
+        _watcher.EnableRaisingEvents = true;
         
         DataContext = _viewModel;
         Refresh();
     }
 
+    private void OnDrawingRenamed(object sender, RenamedEventArgs e)
+    {
+        int idx = _viewModel.Drawings.ToList().FindIndex(f => f.FullPath == e.OldFullPath);
+        if (idx == -1)
+            return;
+        
+        Dispatcher.InvokeAsync(() =>
+        {
+            _viewModel.Drawings[idx] = _viewModel.Drawings[idx] with
+            {
+                FullPath = e.FullPath,
+                DisplayName = Path.GetFileName(e.FullPath)
+            };
+        });
+    }
+
+    private void OnDrawingModified(object sender, FileSystemEventArgs e)
+    {
+        int idx = _viewModel.Drawings.ToList().FindIndex(f => f.FullPath == e.FullPath);
+        if (idx == -1)
+            return;
+        
+        var item = _viewModel.Drawings[idx];
+
+        LoadThumbnailsAsync([ item.FullPath ]);
+    }
+
     protected override void OnClosing(CancelEventArgs e)
     {
-        _asyncImageLoadCancellation?.Cancel();
+        _thumbnailLoadCancel?.Cancel();
         
         _configService.SetConfig("RootDirectory", _viewModel.RootDirectory);
         SerializeThumbnailsCache();
@@ -88,9 +128,8 @@ public partial class MainWindow
     private void Refresh()
     {
         _viewModel.Collections = _directoryService.GetRelevantDirectories(_viewModel.RootDirectory);
-        // FileSystemWatcher watcher = new();
-        // watcher.Path = _viewModel.RootDirectory;
     }
+
 
     private void OnSelectDirectory(object sender, SelectionChangedEventArgs e)
     {
@@ -122,61 +161,70 @@ public partial class MainWindow
                 IsLoadingThumbnail: true
             ));
         }
-        _asyncImageLoadCancellation?.Cancel();
-        _asyncImageLoadCancellation = new CancellationTokenSource();
-        var cancellationToken = _asyncImageLoadCancellation.Token;
         
+        string[] allFiles = selectedDir.ImageFiles.Concat(selectedDir.GimpFiles).ToArray();
+        LoadThumbnailsAsync(allFiles);
+    }
+
+    private void LoadThumbnailsAsync(string[] items)
+    {
+        _thumbnailLoadCancel?.Cancel();
+        _thumbnailLoadCancel = new CancellationTokenSource();
+         
         Task.Run(() =>
         {
             Stopwatch sw = new();
             sw.Start();
             
-            IEnumerable<string> allFiles = selectedDir.ImageFiles.Concat(selectedDir.GimpFiles).ToArray();
-            
-            for (int i = 0; i < allFiles.Count(); i++)
+            foreach (var item in items)
             {
-                if (cancellationToken.IsCancellationRequested)
-                    break;
-                
-                var filePath = allFiles.ElementAt(i);
-
-                BitmapImage thumbnail = _imageService.GetDefaultThumbnail();
-                if (_cachedThumbnails.TryGetValue(filePath, out var cachedThumbnail))
-                {
-                    thumbnail = BitmapImageExtensions.FromByteArray(cachedThumbnail);
-                }
-                else
-                {
-                    var bitmap = _imageService.LoadImage(filePath, 1024, 0);
-                    if (bitmap.IsOk())
-                    {
-                        thumbnail = bitmap.Result();
-                        _cachedThumbnails[filePath] = thumbnail.ToByteArray();
-                    }
-                }
-
-                var index = i;
-                Dispatcher.InvokeAsync(() =>
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                        return;
-
-                    FileItem drawing = _viewModel.Drawings[index];
-                    _viewModel.Drawings[index] = drawing with
-                    {
-                        Thumbnail = thumbnail,
-                        IsLoadingThumbnail = false
-                    };
-                    
-                    _viewModel.Progress++;
-                });
+                // todo: slow and stupid
+                var index = _viewModel.Drawings.ToList().FindIndex(f => f.FullPath == item);
+                LoadThumbnail(index, item, _thumbnailLoadCancel.Token);
             }
             
             Console.WriteLine($"Loaded thumbnails in {sw.ElapsedMilliseconds}ms");
             sw.Stop();
-        }, cancellationToken);
+        }, _thumbnailLoadCancel.Token);
     }
-    
+
+    // todo: move to service
+    private void LoadThumbnail(int index, string filePath, CancellationToken cancellationToken)
+    {
+        if (cancellationToken.IsCancellationRequested)
+            return;
+        
+        BitmapImage thumbnail = _imageService.GetDefaultThumbnail();
+        if (_cachedThumbnails.TryGetValue(filePath, out var cachedThumbnail))
+        {
+            thumbnail = BitmapImageExtensions.FromByteArray(cachedThumbnail);
+        }
+        else
+        {
+            var bitmap = _imageService.LoadImage(filePath, 1024, 0);
+            if (bitmap.IsOk())
+            {
+                thumbnail = bitmap.Result();
+                _cachedThumbnails[filePath] = thumbnail.ToByteArray();
+            }
+        }
+
+        Dispatcher.InvokeAsync(() =>
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return;
+
+            FileItem drawing = _viewModel.Drawings[index];
+            _viewModel.Drawings[index] = drawing with
+            {
+                Thumbnail = thumbnail,
+                IsLoadingThumbnail = false
+            };
+                    
+            _viewModel.Progress++;
+        });
+    }
+
     private void OnOpenWithAssociatedApp(object sender, MouseButtonEventArgs e)
     {
         if (sender is not ListBox listBox)

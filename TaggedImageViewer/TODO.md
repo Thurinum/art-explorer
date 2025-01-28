@@ -3,6 +3,7 @@
 - [ ] Update the image cache automatically when an image is renamed or moved
 - [ ] Update the image cache automatically when image data is edited on disk
 - [ ] Support PSD and Krita files as well
+- [	] Move the selected root dir to the app titlebar
 
 ### Collection features
 - [ ] Make keyboard navigation flow across lines instead of like a grid
