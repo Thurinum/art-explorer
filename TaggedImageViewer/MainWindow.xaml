@@ -96,6 +96,11 @@
         <ListView Grid.Row="1" Grid.Column="2" ItemsSource="{Binding Source={StaticResource GroupedDrawings}}" 
                   SelectionChanged="OnSelectFile"
                   MouseDoubleClick="OnOpenWithAssociatedApp">
+            <ListView.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="Reveal in explorer" Click="OnRevealFileInExplorer"/>
+                </ContextMenu>
+            </ListView.ContextMenu>
             <ListView.GroupStyle>
                 <GroupStyle>
                     <GroupStyle.HeaderTemplate>

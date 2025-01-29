@@ -281,4 +281,21 @@ public partial class MainWindow
         _viewModel.RootDirectory = e.PickedDirectory;
         Refresh();
     }
+
+    private void OnRevealFileInExplorer(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem menuItem)
+            return;
+        
+        if (menuItem.Parent is not ContextMenu contextMenu)
+            return;
+
+        if (contextMenu.PlacementTarget is not ListView listView)
+            return;
+        
+        if (listView.SelectedItem is not FileItem file)
+            return;
+        
+        Process.Start("explorer.exe", $"/select, \"{file.FullPath}\"");
+    }
 }
