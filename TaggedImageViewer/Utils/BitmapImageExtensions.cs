@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
 using System.IO;
+using System.Windows;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ImageMagick;
 using ImageMagick.ImageOptimizers;
@@ -8,6 +10,7 @@ namespace TaggedImageViewer.Utils;
 
 public static class BitmapImageExtensions
 {
+    // todo: to service
     public static BitmapImage FromByteArray(byte[] data)
     {
         using MemoryStream stream = new(data);
@@ -17,7 +20,7 @@ public static class BitmapImageExtensions
         bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
         bitmapImage.EndInit();
         bitmapImage.Freeze();
-        
+
         return bitmapImage;
     }
 
@@ -27,7 +30,7 @@ public static class BitmapImageExtensions
         BitmapEncoder encoder = new JpegBitmapEncoder();
         encoder.Frames.Add(BitmapFrame.Create(image));
         encoder.Save(stream);
-        
+
         return stream.ToArray();
     }
 }

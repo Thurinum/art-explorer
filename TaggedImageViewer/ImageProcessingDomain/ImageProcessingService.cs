@@ -19,29 +19,35 @@ public class ImageProcessingService() : IImageService
         return DefaultImage;
     }
 
-    public OneOf<BitmapImage, FuckYou> LoadImage(string? path, int width, int height)
+    public OneOf<BitmapImage, FuckYou> LoadImage(string? path, uint width, uint height)
     {
         if (path == null)
             return DefaultImage;
         
         return path.EndsWith(".xcf") 
-            ? LoadXcfImage(path, (uint)width, (uint)height) 
+            ? LoadXcfImage(path, width, height) 
             : LoadGenericImage(path, width, height);
     }
 
-    private static OneOf<BitmapImage, FuckYou> LoadGenericImage(string path, int width, int height)
+    private static OneOf<BitmapImage, FuckYou> LoadGenericImage(string path, uint width, uint height)
     {
         try
         {
-            using FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+            using IMagickImage<byte> image = new MagickImage(path);
+            image.ColorAlpha(MagickColors.White);
+            image.Resize(width, height);
+            using MemoryStream stream = new();
+            image.Write(stream, MagickFormat.Jpeg);
+            
+            stream.Position = 0;
+            
             var bitmap = new BitmapImage();
             bitmap.BeginInit();
             bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.DecodePixelWidth = width;
-            bitmap.DecodePixelHeight = height;
             bitmap.StreamSource = stream;
             bitmap.EndInit();
             bitmap.Freeze();
+            
             return bitmap;
         }
         catch (Exception e)
@@ -61,9 +67,9 @@ public class ImageProcessingService() : IImageService
                 Height = height
             };
             using MagickImageCollection layers = new MagickImageCollection(path, settings);
-            layers[0].BackgroundColor = MagickColors.White;
             using IMagickImage<byte> image = layers.Merge();
-            using MemoryStream stream = new MemoryStream();
+            image.BackgroundColor = MagickColors.White;
+            using MemoryStream stream = new();
             image.Resize(width, height);
             image.Write(stream, MagickFormat.Jpeg);
 

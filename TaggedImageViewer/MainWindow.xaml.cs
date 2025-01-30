@@ -27,7 +27,7 @@ public partial class MainWindow
     private readonly MainWindowViewModel _viewModel = new();
     private readonly FileSystemWatcher _watcher = new();
 
-    private CancellationTokenSource? _thumbnailLoadCancel;
+    private CancellationTokenSource _thumbnailLoadCancel = new();
     private Dictionary<string, byte[]> _cachedThumbnails = new();
 
     public MainWindow(IDirectoryService directoryService, IImageService imageService, IConfigService configService)
@@ -45,9 +45,9 @@ public partial class MainWindow
                               | NotifyFilters.FileName 
                               | NotifyFilters.DirectoryName;
         _watcher.Filter = "*.*";
-        //_watcher.Created += OnDrawingRenamed;
+        _watcher.Created += OnDrawingRenamed;
         _watcher.Renamed += OnDrawingRenamed;
-        //_watcher.Changed += OnDrawingModified;
+        _watcher.Changed += OnDrawingModified;
         //_watcher.Deleted += OnDrawingRenamed;
         _watcher.IncludeSubdirectories = true;
         _watcher.EnableRaisingEvents = true;
@@ -72,6 +72,11 @@ public partial class MainWindow
         });
     }
 
+    private void OnDrawingCreated(object sender, FileSystemEventArgs e)
+    {
+        
+    }
+
     private void OnDrawingModified(object sender, FileSystemEventArgs e)
     {
         int idx = _viewModel.Drawings.ToList().FindIndex(f => f.FullPath == e.FullPath);
@@ -80,7 +85,14 @@ public partial class MainWindow
         
         var item = _viewModel.Drawings[idx];
 
-        LoadThumbnailsAsync([ item.FullPath ]);
+        Dispatcher.InvokeAsync(() =>
+        {
+            _viewModel.Drawings[idx] = item with
+            {
+                IsLoadingThumbnail = true
+            };
+            _ = LoadThumbnailsAsync([idx], [item.FullPath], true, _thumbnailLoadCancel.Token);
+        });
     }
 
     protected override void OnClosing(CancelEventArgs e)
@@ -162,53 +174,74 @@ public partial class MainWindow
             ));
         }
         
-        string[] allFiles = selectedDir.ImageFiles.Concat(selectedDir.GimpFiles).ToArray();
-        LoadThumbnailsAsync(allFiles);
+        _thumbnailLoadCancel.Cancel();
+        _thumbnailLoadCancel = new CancellationTokenSource();
+        _ = LoadThumbnailsAsync(
+            _viewModel.Drawings.Select((_, i) => i).ToArray(), 
+            _viewModel.Drawings.Select(f => f.FullPath).ToArray(), 
+            false,
+            _thumbnailLoadCancel.Token);
     }
 
-    private void LoadThumbnailsAsync(string[] items)
+    private async Task LoadThumbnailsAsync(int[] indices, string[] filePaths, bool invalidateCache, CancellationToken cancellationToken)
     {
-        _thumbnailLoadCancel?.Cancel();
-        _thumbnailLoadCancel = new CancellationTokenSource();
-         
-        Task.Run(() =>
+        var semaphore = new SemaphoreSlim(Environment.ProcessorCount);
+        List<Task> tasks = [];
+        
+        Stopwatch sw = new();
+        sw.Start();
+
+        for (int i = 0; i < indices.Length; i++)
         {
-            Stopwatch sw = new();
-            sw.Start();
+            int index = indices[i];
+            string filePath = filePaths[i];
             
-            foreach (var item in items)
+            if (cancellationToken.IsCancellationRequested)
+                break;
+            
+            await semaphore.WaitAsync(cancellationToken);
+            
+            tasks.Add(Task.Run(() =>
             {
-                // todo: slow and stupid
-                var index = _viewModel.Drawings.ToList().FindIndex(f => f.FullPath == item);
-                LoadThumbnail(index, item, _thumbnailLoadCancel.Token);
-            }
-            
-            Console.WriteLine($"Loaded thumbnails in {sw.ElapsedMilliseconds}ms");
-            sw.Stop();
-        }, _thumbnailLoadCancel.Token);
+                try
+                {
+                    LoadThumbnail(index, filePath, invalidateCache, cancellationToken);
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
+            }, cancellationToken));
+        }
+        
+        await Task.WhenAll(tasks);
+        
+        Console.WriteLine($"Loaded thumbnails in {sw.ElapsedMilliseconds}ms");
+        sw.Stop();
     }
 
     // todo: move to service
-    private void LoadThumbnail(int index, string filePath, CancellationToken cancellationToken)
+    private void LoadThumbnail(int index, string filePath, bool invalidateCache, CancellationToken cancellationToken)
     {
         if (cancellationToken.IsCancellationRequested)
             return;
         
         BitmapImage thumbnail = _imageService.GetDefaultThumbnail();
-        if (_cachedThumbnails.TryGetValue(filePath, out var cachedThumbnail))
+        if (!invalidateCache && _cachedThumbnails.TryGetValue(filePath, out var cachedThumbnail))
         {
             thumbnail = BitmapImageExtensions.FromByteArray(cachedThumbnail);
         }
         else
         {
             var bitmap = _imageService.LoadImage(filePath, 1024, 0);
+            
             if (bitmap.IsOk())
             {
                 thumbnail = bitmap.Result();
                 _cachedThumbnails[filePath] = thumbnail.ToByteArray();
             }
         }
-
+        
         Dispatcher.InvokeAsync(() =>
         {
             if (cancellationToken.IsCancellationRequested)
