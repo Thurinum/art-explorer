@@ -45,7 +45,7 @@ public partial class MainWindow
                               | NotifyFilters.FileName 
                               | NotifyFilters.DirectoryName;
         _watcher.Filter = "*.*";
-        _watcher.Created += OnDrawingRenamed;
+        //_watcher.Created += OnDrawingRenamed;
         _watcher.Renamed += OnDrawingRenamed;
         _watcher.Changed += OnDrawingModified;
         //_watcher.Deleted += OnDrawingRenamed;
