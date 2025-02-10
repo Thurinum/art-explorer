@@ -2,6 +2,7 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using TaggedImageViewer.ViewModels;
 
 namespace TaggedImageViewer.Components;
@@ -42,16 +43,36 @@ public partial class DrawingPreview : UserControl
         ImagesPanel.RenderTransform = new MatrixTransform(transform);
     }
 
-    private void OnImageDragStart(object sender, MouseButtonEventArgs e)
+    private void OnImageMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not Panel panel)
             return;
-        
-        _isDraggingImage = true;
-        _previousMousePosition = e.GetPosition(panel);
+
+        if (e.ChangedButton == MouseButton.Left)
+        {
+            _isDraggingImage = true;
+            _previousMousePosition = e.GetPosition(panel);
+        }
+        else if (e.ChangedButton == MouseButton.Middle)
+        {
+            ResetZoom();
+        }
+        else if (e.ChangedButton == MouseButton.XButton1)
+        {
+            // TODO: Find out how to use the current pos as origin for the flip
+            Matrix transform = ImagesPanel.RenderTransform.Value;
+            transform.ScaleAt(-1, 1, panel.ActualWidth / 2, panel.ActualHeight / 2);
+            ImagesPanel.RenderTransform = new MatrixTransform(transform);
+        }
+        else if (e.ChangedButton == MouseButton.XButton2)
+        {
+            Matrix transform = ImagesPanel.RenderTransform.Value;
+            transform.ScaleAt(1, -1, panel.ActualWidth / 2, panel.ActualHeight / 2);
+            ImagesPanel.RenderTransform = new MatrixTransform(transform);
+        }
     }
 
-    private void OnImageDragEnd(object sender, MouseButtonEventArgs e)
+    private void OnImageMouseUp(object sender, MouseButtonEventArgs e)
     {
         _isDraggingImage = false;
     }

@@ -19,7 +19,7 @@
 ### Viewing features
 - [x] Fix zoom in/out to center on the mouse cursor
 - [ ] Flip images horizontally and vertically
-- [ ] Maintain zoom
+- [x] Option to maintain zoom on select
 - [ ] Reset zoom to 100% (Middle click)
 - [ ] Scroll mouse wheel to compare more than 2 images
 - [ ] Support previewing gifs
