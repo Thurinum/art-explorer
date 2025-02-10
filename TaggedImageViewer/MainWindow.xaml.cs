@@ -283,7 +283,8 @@ public partial class MainWindow
             return;
         
         _viewModel.DrawingPreview.SelectedDrawing = selectedFile;
-        PreviewComponent.ResetZoom();
+        if (_viewModel.AutoFitZoom)
+            PreviewComponent.ResetZoom();
 
         if (listBox.SelectedItems.Count == 1)
         {

@@ -13,4 +13,6 @@ public class MainWindowViewModel
     public string RootDirectory { get; set; } = "";
     public double Progress { get; set; } = 0;
     public double ProgressMax { get; set; } = 1;
+    
+    public bool AutoFitZoom { get; set; } = true;
 }
