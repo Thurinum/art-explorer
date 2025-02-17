@@ -279,23 +279,11 @@ public partial class MainWindow
         if (sender is not ListBox listBox)
             return;
         
-        if (listBox.SelectedItem is not FileItem selectedFile)
-            return;
+        _viewModel.DrawingPreview.SelectedDrawings = listBox.SelectedItems.Cast<FileItem>().ToList();
+        _viewModel.DrawingPreview.SelectedDrawingIndex = 0;
         
-        _viewModel.DrawingPreview.SelectedDrawing = selectedFile;
         if (_viewModel.AutoFitZoom)
-            PreviewComponent.ResetZoom();
-
-        if (listBox.SelectedItems.Count == 1)
-        {
-            _viewModel.DrawingPreview.SelectedDrawing2 = null;
-            return;
-        }
-
-        if (listBox.SelectedItems[1] is not FileItem selectedFile2) 
-            return;
-        
-        _viewModel.DrawingPreview.SelectedDrawing2 = selectedFile2;
+            PreviewComponent.ResetTransform();
     }
 
     private void DeleteThumbnailsCache(object sender, RoutedEventArgs e)

@@ -2,55 +2,40 @@
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Media3D;
 using TaggedImageViewer.ViewModels;
 
 namespace TaggedImageViewer.Components;
 
-public partial class DrawingPreview : UserControl
+public partial class DrawingPreview
 {
+    private DrawingPreviewViewModel _viewModel = null!;
     private bool _isDraggingImage;
     private Point _previousMousePosition;
-    private DrawingPreviewViewModel _viewModel = null!;
-    
+
     public DrawingPreview()
     {
         InitializeComponent();
     }
-    
+
     private void OnComponentLoaded(object sender, RoutedEventArgs e)
     {
         _viewModel = (DrawingPreviewViewModel)DataContext;
     }
     
-    public void ResetZoom()
+    public void ResetTransform()
     {
         ImagesPanel.RenderTransform = new ScaleTransform(1, 1);
     }
     
     private delegate void TransformAction(ref Matrix transform);
-    
     private void ApplyTransform(TransformAction action)
     {
         Matrix transform = ImagesPanel.RenderTransform.Value;
         action(ref transform);
         ImagesPanel.RenderTransform = new MatrixTransform(transform);
     }
-    
-    private void OnImageZoom(object sender, MouseWheelEventArgs e)
-    {
-        if (e.Delta == 0)
-            return;
 
-        double scale = e.Delta > 0 
-            ? 1.1 
-            : 1 / 1.1;
-        
-        var pos = e.GetPosition(RootPanel);
-        ApplyTransform((ref Matrix t) => t.ScaleAt(scale, scale, pos.X, pos.Y));
-    }
-
-    private void OnImageMouseDown(object sender, MouseButtonEventArgs e)
+    private void OnMouseDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not Panel panel)
             return;
@@ -65,7 +50,7 @@ public partial class DrawingPreview : UserControl
         }
         else if (e.ChangedButton == MouseButton.Middle)
         {
-            ResetZoom();
+            ResetTransform();
         }
         else if (e.ChangedButton == MouseButton.XButton1)
         {
@@ -77,12 +62,31 @@ public partial class DrawingPreview : UserControl
         }
     }
 
-    private void OnImageMouseUp(object sender, MouseButtonEventArgs e)
+    private void OnMouseUp(object sender, MouseButtonEventArgs e)
     {
         _isDraggingImage = false;
     }
+    
+    private void OnMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (e.Delta == 0)
+            return;
+        
+        if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            SwitchImage(e.Delta < 0 ? 1 : -1);
+            return;
+        }
 
-    private void OnImageDrag(object sender, MouseEventArgs e)
+        double scale = e.Delta > 0 
+            ? 1.1 
+            : 1 / 1.1;
+        
+        var pos = e.GetPosition(RootPanel);
+        ApplyTransform((ref Matrix t) => t.ScaleAt(scale, scale, pos.X, pos.Y));
+    }
+    
+    private void OnMouseMove(object sender, MouseEventArgs e)
     {
         if (!_isDraggingImage)
             return;
@@ -93,14 +97,17 @@ public partial class DrawingPreview : UserControl
         
         _previousMousePosition = mousePos;
     }
-    
-    private void OnEnableCompare(object sender, MouseButtonEventArgs e)
+
+    private void OnMouseLeave(object sender, MouseEventArgs e)
     {
-        _viewModel.IsSecondImageVisible = true;
+        _isDraggingImage = false;
     }
 
-    private void OnDisableCompare(object sender, MouseButtonEventArgs e)
+    private void SwitchImage(int offset)
     {
-        _viewModel.IsSecondImageVisible = false;
+        _viewModel.SelectedDrawingIndex = (_viewModel.SelectedDrawingIndex + offset) % _viewModel.SelectedDrawings.Count;
+        
+        if (_viewModel.SelectedDrawingIndex < 0)
+            _viewModel.SelectedDrawingIndex = _viewModel.SelectedDrawings.Count - 1;
     }
 }

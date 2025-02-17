@@ -6,12 +6,9 @@ namespace TaggedImageViewer.ViewModels;
 [AddINotifyPropertyChangedInterface]
 public class DrawingPreviewViewModel
 {
-    public FileItem? SelectedDrawing { get; set;  } = null;
-    public FileItem? SelectedDrawing2 { get; set;  } = null;
-    public bool IsSecondImageVisible { get; set; } = false;
+    public ICollection<FileItem> SelectedDrawings { get; set; } = [];
+    public int SelectedDrawingIndex { get; set; }
     
-    // used by binding
-    public Visibility ShowSecondImage => SelectedDrawing2 != null && IsSecondImageVisible
-        ? Visibility.Visible
-        : Visibility.Collapsed;
+    public FileItem? SelectedDrawing => SelectedDrawings.ElementAtOrDefault(SelectedDrawingIndex);
+    public string PagingInfo => $" ({SelectedDrawingIndex + 1}/{SelectedDrawings.Count})";
 }
