@@ -20,7 +20,7 @@
 - [x] Fix zoom in/out to center on the mouse cursor
 - [ ] Flip images horizontally and vertically
 - [x] Option to maintain zoom on select
-- [ ] Reset zoom to 100% (Middle click)
+- [x] Reset zoom to 100% (Middle click)
 - [ ] Scroll mouse wheel to compare more than 2 images
 - [ ] Support previewing gifs
 

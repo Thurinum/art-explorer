@@ -11,7 +11,7 @@ public partial class DrawingPreview : UserControl
 {
     private bool _isDraggingImage;
     private Point _previousMousePosition;
-    private DrawingPreviewViewModel _viewModel = null!; // lateinit
+    private DrawingPreviewViewModel _viewModel = null!;
     
     public DrawingPreview()
     {
@@ -28,19 +28,26 @@ public partial class DrawingPreview : UserControl
         ImagesPanel.RenderTransform = new ScaleTransform(1, 1);
     }
     
+    private delegate void TransformAction(ref Matrix transform);
+    
+    private void ApplyTransform(TransformAction action)
+    {
+        Matrix transform = ImagesPanel.RenderTransform.Value;
+        action(ref transform);
+        ImagesPanel.RenderTransform = new MatrixTransform(transform);
+    }
+    
     private void OnImageZoom(object sender, MouseWheelEventArgs e)
     {
         if (e.Delta == 0)
             return;
 
-        Matrix transform = ImagesPanel.RenderTransform.Value;
         double scale = e.Delta > 0 
             ? 1.1 
             : 1 / 1.1;
         
         var pos = e.GetPosition(RootPanel);
-        transform.ScaleAt(scale, scale, pos.X, pos.Y);
-        ImagesPanel.RenderTransform = new MatrixTransform(transform);
+        ApplyTransform((ref Matrix t) => t.ScaleAt(scale, scale, pos.X, pos.Y));
     }
 
     private void OnImageMouseDown(object sender, MouseButtonEventArgs e)
@@ -48,6 +55,9 @@ public partial class DrawingPreview : UserControl
         if (sender is not Panel panel)
             return;
 
+        double centerX = panel.ActualWidth / 2;
+        double centerY = panel.ActualHeight / 2;
+        
         if (e.ChangedButton == MouseButton.Left)
         {
             _isDraggingImage = true;
@@ -59,16 +69,11 @@ public partial class DrawingPreview : UserControl
         }
         else if (e.ChangedButton == MouseButton.XButton1)
         {
-            // TODO: Find out how to use the current pos as origin for the flip
-            Matrix transform = ImagesPanel.RenderTransform.Value;
-            transform.ScaleAt(-1, 1, panel.ActualWidth / 2, panel.ActualHeight / 2);
-            ImagesPanel.RenderTransform = new MatrixTransform(transform);
+            ApplyTransform((ref Matrix t) => t.ScaleAtPrepend(-1, 1, centerX, centerY));
         }
         else if (e.ChangedButton == MouseButton.XButton2)
         {
-            Matrix transform = ImagesPanel.RenderTransform.Value;
-            transform.ScaleAt(1, -1, panel.ActualWidth / 2, panel.ActualHeight / 2);
-            ImagesPanel.RenderTransform = new MatrixTransform(transform);
+            ApplyTransform((ref Matrix t) => t.ScaleAtPrepend(1, -1, centerX, centerY));
         }
     }
 
@@ -82,11 +87,10 @@ public partial class DrawingPreview : UserControl
         if (!_isDraggingImage)
             return;
         
-        Matrix transform = ImagesPanel.RenderTransform.Value;
         Point mousePos = e.GetPosition(RootPanel);
         Vector displacement = mousePos - _previousMousePosition;
-        transform.Translate(displacement.X, displacement.Y);
-        ImagesPanel.RenderTransform = new MatrixTransform(transform);
+        ApplyTransform((ref Matrix t) => t.Translate(displacement.X, displacement.Y));
+        
         _previousMousePosition = mousePos;
     }
     
