@@ -1,9 +1,12 @@
 ﻿### Filesystem operations
-- [ ] Watch filesystem for changes and update the list of images
-- [ ] Update the image cache automatically when an image is renamed or moved
-- [ ] Update the image cache automatically when image data is edited on disk
+- [x] Watch filesystem for changes and update the list of images
+- [x] Update the image cache automatically when an image is renamed
+- [x] Update the image cache automatically when an image is edited
+- [ ] Update the image cache automatically when an image is moved
+- [ ] Update the image cache automatically when an image is deleted
+- [ ] Update the image cache with changes made outside the app
+- [ ] Also cache the thumbnails of collections
 - [ ] Support PSD and Krita files as well
-- [	] Move the selected root dir to the app titlebar
 
 ### Collection features
 - [ ] Make keyboard navigation flow across lines instead of like a grid
@@ -18,18 +21,19 @@
 
 ### Viewing features
 - [x] Fix zoom in/out to center on the mouse cursor
-- [ ] Flip images horizontally and vertically
+- [x] Flip images horizontally and vertically
 - [x] Option to maintain zoom on select
 - [x] Reset zoom to 100% (Middle click)
-- [ ] Scroll mouse wheel to compare more than 2 images
+- [x] Scroll mouse wheel to compare more than 2 images
 - [ ] Support previewing gifs
 
-### Metadata
+### Search and metadata
+- [ ] Search for images by name and tag (e.g. "orange fox")
 - [ ] Set optional per-image metadata tags
   - Name(s)
   - Species
   - Gender
-  - Miscellaneous tags: actions, emotions, etc. 
+  - Miscellaneous tags: actions, emotions, etc.
+- [ ] Collection defaults
 - [ ] Auto-extract list of colors used in the image, and assign as tags by factor
   - e.g. orange (30%), beige (20%), white (10%), cyan (1%)
-- [ ] Tag-based image search (e.g. "orange fox")
