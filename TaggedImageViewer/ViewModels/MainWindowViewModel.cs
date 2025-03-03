@@ -14,5 +14,6 @@ public class MainWindowViewModel
     public double Progress { get; set; } = 0;
     public double ProgressMax { get; set; } = 1;
     
-    public bool AutoFitZoom { get; set; } = true;
+    // TODO: should be in separate viewmodels
+    public Settings Settings { get; set; } = new();
 }

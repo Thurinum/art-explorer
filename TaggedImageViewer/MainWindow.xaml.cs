@@ -23,34 +23,38 @@ public partial class MainWindow
 {
     private readonly IDirectoryService _directoryService;
     private readonly IImageService _imageService;
-    private readonly IConfigService _configService;
+    private Settings _settings;
     private readonly MainWindowViewModel _viewModel = new();
     private readonly FileSystemWatcher _watcher = new();
 
     private CancellationTokenSource _thumbnailLoadCancel = new();
     private Dictionary<string, byte[]> _cachedThumbnails = new();
 
-    public MainWindow(IDirectoryService directoryService, IImageService imageService, IConfigService configService)
+    public MainWindow(IDirectoryService directoryService, IImageService imageService, Settings configService)
     {
         _directoryService = directoryService;
         _imageService = imageService;
-        _configService = configService;
+        _settings = configService;
         InitializeComponent();
         DeserializeThumbnailsCache();
 
-        _viewModel.RootDirectory = _configService.GetConfig<string>("RootDirectory", "");
+        _viewModel.RootDirectory = _settings.RootDirectory;
+        _viewModel.Settings = _settings;
 
-        _watcher.Path = _viewModel.RootDirectory;
-        _watcher.NotifyFilter = NotifyFilters.LastWrite 
-                              | NotifyFilters.FileName 
-                              | NotifyFilters.DirectoryName;
-        _watcher.Filter = "*.*";
-        //_watcher.Created += OnDrawingRenamed;
-        _watcher.Renamed += OnDrawingRenamed;
-        _watcher.Changed += OnDrawingModified;
-        //_watcher.Deleted += OnDrawingRenamed;
-        _watcher.IncludeSubdirectories = true;
-        _watcher.EnableRaisingEvents = true;
+        if (Directory.Exists(_viewModel.RootDirectory))
+        {
+            _watcher.Path = _viewModel.RootDirectory;
+            _watcher.NotifyFilter = NotifyFilters.LastWrite 
+                                    | NotifyFilters.FileName 
+                                    | NotifyFilters.DirectoryName;
+            _watcher.Filter = "*.*";
+            //_watcher.Created += OnDrawingRenamed;
+            _watcher.Renamed += OnDrawingRenamed;
+            _watcher.Changed += OnDrawingModified;
+            //_watcher.Deleted += OnDrawingRenamed;
+            _watcher.IncludeSubdirectories = true;
+            _watcher.EnableRaisingEvents = true;
+        }
         
         DataContext = _viewModel;
         Refresh();
@@ -99,7 +103,7 @@ public partial class MainWindow
     {
         _thumbnailLoadCancel?.Cancel();
         
-        _configService.SetConfig("RootDirectory", _viewModel.RootDirectory);
+        _settings.RootDirectory = _viewModel.RootDirectory;
         SerializeThumbnailsCache();
         base.OnClosing(e);
     }
@@ -282,7 +286,7 @@ public partial class MainWindow
         _viewModel.DrawingPreview.SelectedDrawings = listBox.SelectedItems.Cast<FileItem>().ToList();
         _viewModel.DrawingPreview.SelectedDrawingIndex = 0;
         
-        if (_viewModel.AutoFitZoom)
+        if (_settings.ResetZoomOnImageChange)
             PreviewComponent.ResetTransform();
     }
 

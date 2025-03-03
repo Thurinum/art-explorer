@@ -68,7 +68,7 @@
         
         <Menu Grid.Row="0" Grid.ColumnSpan="5">
             <MenuItem Header="View">
-                <MenuItem Header="Reset zoom on select" IsCheckable="True" IsChecked="{Binding AutoFitZoom}" />
+                <MenuItem Header="Reset zoom on select" IsCheckable="True" IsChecked="{Binding Settings.ResetZoomOnImageChange}" />
             </MenuItem>
             <MenuItem Header="Developer">
                 <MenuItem Header="Delete thumbnails cache" Click="DeleteThumbnailsCache" />
